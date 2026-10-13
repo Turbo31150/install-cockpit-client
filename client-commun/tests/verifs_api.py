@@ -7,7 +7,7 @@ import time
 
 
 NOM_COOKIE = "cockpit_session"
-VERSION_CLIENT = "1.3.0"
+VERSION_CLIENT = "1.5.0"
 
 
 class Banc:

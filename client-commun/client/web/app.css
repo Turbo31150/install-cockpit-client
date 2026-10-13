@@ -311,3 +311,52 @@ select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 .conseil-action { margin-top: 8px; }
 .bouton.petit { padding: 4px 10px; font-size: .85rem; }
 .conseil-action .bouton:disabled { cursor: default; }
+
+/* ---- liste d'assistants rangée par catégorie (1.5.0) : vingtaine d'entrées lisible */
+.barre-liste { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 0 10px; }
+.recherche {
+  flex: 1 1 240px; min-width: 180px; padding: 9px 12px; font: inherit; color: var(--texte);
+  background: var(--surface); border: 1px solid var(--bord); border-radius: var(--rayon);
+}
+.recherche:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.compte { margin: 0; }
+.groupes { display: grid; gap: 8px; }
+details.groupe {
+  background: var(--surface); border: 1px solid var(--bord); border-radius: var(--rayon); overflow: hidden;
+}
+details.groupe > summary {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 11px 14px; cursor: pointer; font-weight: 600; list-style: none;
+}
+details.groupe > summary::-webkit-details-marker { display: none; }
+details.groupe > summary::after { content: '▸'; color: var(--texte-2); font-weight: 400; }
+details.groupe[open] > summary::after { content: '▾'; }
+details.groupe[open] > summary { border-bottom: 1px solid var(--bord); background: var(--surface-2); }
+.groupe-titre { flex: 1 1 auto; }
+.groupe-nombre {
+  color: var(--texte-2); font-weight: 400; font-size: .85rem; background: var(--surface-2);
+  border: 1px solid var(--bord); border-radius: 999px; padding: 1px 9px;
+}
+details.groupe[open] > summary .groupe-nombre { background: var(--surface); }
+ul.entrees { list-style: none; margin: 0; padding: 0; }
+ul.entrees > li + li { border-top: 1px solid var(--bord); }
+button.entree {
+  display: block; width: 100%; text-align: left; background: transparent; border: 0;
+  padding: 10px 14px; font: inherit; color: var(--texte); cursor: pointer;
+}
+button.entree:hover { background: var(--surface-2); }
+button.entree:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.entree-titre { display: block; font-weight: 600; }
+.entree-desc { display: block; color: var(--texte-2); font-size: .85rem; margin-top: 2px; }
+ul.entrees > li.ouverte { background: var(--surface-2); }
+ul.entrees > li.ouverte > button.entree { border-left: 4px solid var(--accent); padding-left: 10px; }
+.hote:not(:empty) { padding: 0 14px 14px; }
+.hote .carte { box-shadow: none; }
+.exemples { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 10px; }
+button.exemple {
+  font: inherit; font-size: .8rem; text-align: left; color: var(--accent); background: transparent;
+  border: 1px dashed var(--bord); border-radius: 999px; padding: 3px 10px; cursor: pointer;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+button.exemple:hover { border-style: solid; background: var(--surface); }
+button.exemple:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

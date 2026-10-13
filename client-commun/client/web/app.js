@@ -16,10 +16,15 @@
   const STATUTS = { en_attente: 'En attente', accordee: 'Accordée', refusee: 'Refusée' };
   const BOUTONS_LONGS = { 'grand-conseil': 'Soumettre au conseil', 'table-ronde': 'Lancer la table ronde' };
   const CHATS = new Set(['llm-local', 'llm-code']);  // compétences en fil de discussion
+  // tous les assistants (ref « llm-… ») tiennent une conversation : on peut leur faire corriger
+  // ou raccourcir leur réponse sans tout réécrire.
+  const estFil = (ref) => CHATS.has(ref) || /^llm-/.test(String(ref || ''));
   const TRES_LONGS = new Set(['table-ronde']);       // budget du serveur local : 200 s
+  const CLE_GROUPES = 'cockpit.groupes.v1';          // catégories dépliées (mémoire d'affichage)
   const RUBRIQUES = ['assistants', 'taches', 'planning', 'notes', 'outils', 'machine', 'acces'];
 
   const etat = { expire: false, verrouille: true, expireLe: null, demandes: [], minuteurs: [], titres: {},
+                 listeAcces: null, signatureCatalogue: null,
                  vue: null, connexion: null, boucles: false, pret: false };
   const vues = {};
   let compteur = 0;
@@ -364,7 +369,11 @@
     }
     const long = mode === 'approfondi' || item.nature === 'competence';
     let texte = long ? "Le conseil d'experts prépare une réponse détaillée (jusqu'à une minute)" : "Le conseil d'experts cherche la réponse";
-    if (item.nature === 'competence') texte = CHATS.has(item.ref) ? "L'assistant rédige sa réponse" : "Délibération du conseil d'experts en cours (jusqu'à une minute)";
+    if (item.nature === 'competence') {
+      texte = estFil(item.ref)
+        ? (mode === 'approfondi' ? "L'assistant approfondit votre demande (jusqu'à une minute)" : "L'assistant rédige sa réponse")
+        : "Délibération du conseil d'experts en cours (jusqu'à une minute)";
+    }
     boutons.forEach((b) => { b.disabled = true; });
     const arreter = indicateur(zone, texte);
     const corps = { ref: item.ref, question: question, mode: mode };
@@ -462,29 +471,33 @@
     };
     const [lab, zoneTexte] = champ('Votre message', { rows: 2, maxlength: MAX_QUESTION, placeholder: 'Écrivez votre message…' });
     const envoyer = el('button', { type: 'button', class: 'bouton', texte: 'Envoyer' });
+    const approfondi = el('button', { type: 'button', class: 'bouton secondaire', texte: 'Réponse approfondie' });
     const nouvelle = el('button', { type: 'button', class: 'bouton discret', texte: 'Nouvelle conversation' });
     const zone = el('div', { class: 'zone-reponse', 'aria-live': 'polite' });
-    envoyer.addEventListener('click', async () => {
+    const poser = async (mode) => {
       const q = zoneTexte.value.trim();
       if (!q) return;
       const tours = lireFil(item.ref);
-      const d = await demander(item, q, 'rapide', zone, [envoyer, nouvelle], contexteFil(tours));
+      const d = await demander(item, q, mode, zone, [envoyer, approfondi, nouvelle], contexteFil(tours));
       if (!d) return;
       zone.replaceChildren();
       tours.push({ ts: Date.now(), question: q, reponse: d.reponse || '' });
       ecrireFil(item.ref, tours);
       zoneTexte.value = '';
       dessiner();
-    });
+    };
+    envoyer.addEventListener('click', () => poser('rapide'));
+    approfondi.addEventListener('click', () => poser('approfondi'));
     nouvelle.addEventListener('click', () => { ecrireFil(item.ref, []); zone.replaceChildren(); dessiner(); });
     raccourciEnvoi(zoneTexte, envoyer);
     dessiner();
     return el('article', { class: 'carte', 'data-fil': item.ref, 'data-saisie': item.ref }, ...enteteCarte(item), fil, lab, zoneTexte,
-      el('div', { class: 'actions' }, envoyer, nouvelle, el('span', { class: 'aide', texte: 'Les 6 derniers échanges sont pris en compte.' })), zone);
+      el('div', { class: 'actions' }, envoyer, approfondi, nouvelle,
+        el('span', { class: 'aide', texte: 'Les 6 derniers échanges sont pris en compte. Approfondie : jusqu\'à une minute.' })), zone);
   }
 
   function carteAcces(item) {
-    if (item.nature === 'competence' && CHATS.has(item.ref)) return carteFil(item);
+    if (item.nature === 'competence' && estFil(item.ref)) return carteFil(item);
     if (item.nature === 'competence') return carteDeliberation(item);
     return carteQuestion(item);
   }
@@ -494,8 +507,13 @@
     const message = String(texte || '').trim().slice(0, MAX_QUESTION);
     if (!message) return false;
     aller('assistants');
-    const carte = document.querySelector('#liste-acces [data-fil] textarea')
+    const champ = () => document.querySelector('#liste-acces [data-fil] textarea')
       || document.querySelector('#liste-acces [data-saisie] textarea');
+    let carte = champ();
+    if (!carte) {                     // aucune saisie dépliée : on ouvre l'assistant conversationnel
+      ouvrirAssistant(null);
+      carte = champ();
+    }
     if (!carte) {
       bandeau('assistant', "Aucun assistant n'est ouvert sur votre accès pour le moment : demandez un accès dans « Assistants ».");
       return false;
@@ -537,17 +555,153 @@
     return carte;
   }
 
+  // ------------------------------------------------------------------ liste rangée par catégorie
+  // Une vingtaine d'assistants + les thèmes : on ne pose PAS vingt formulaires sur la page.
+  // Catégories repliables, champ de recherche, et la saisie n'apparaît que pour l'assistant choisi.
+  const CAT_DEFAUT = { domaine: 'Thèmes documentaires', guide: 'Parcours guidés', competence: 'Assistants' };
+  const sansAccent = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const categorieDe = (item) => String(item.categorie || '').trim() || CAT_DEFAUT[item.nature] || 'Autres';
+
+  function grouper(items) {
+    const tri = items.slice().sort((a, b) => (Number(a.rang) || 9999) - (Number(b.rang) || 9999));
+    const ordre = [], par = new Map();
+    for (const it of tri) {
+      const c = categorieDe(it);
+      if (!par.has(c)) { par.set(c, []); ordre.push(c); }
+      par.get(c).push(it);
+    }
+    return ordre.map((c) => ({ categorie: c, items: par.get(c) }));
+  }
+  function memoireGroupes(cle) { const v = lire(CLE_GROUPES, {}); return Array.isArray(v[cle]) ? v[cle] : null; }
+  function noterGroupe(cle, categorie, ouvert) {
+    const v = lire(CLE_GROUPES, {});
+    const l = (Array.isArray(v[cle]) ? v[cle] : []).filter((x) => x !== categorie);
+    if (ouvert) l.push(categorie);
+    v[cle] = l.slice(-40);
+    ecrire(CLE_GROUPES, v);
+  }
+  function chipsExemples(carte, item) {
+    const ex = tableau(item.exemples).slice(0, 3).filter((x) => typeof x === 'string' && x.trim());
+    const champ = carte.querySelector('textarea');
+    if (!ex.length || !champ) return;
+    const bloc = el('div', { class: 'exemples' }, el('span', { class: 'aide', texte: 'Exemples :' }));
+    for (const x of ex) {
+      const b = el('button', { type: 'button', class: 'exemple', texte: x });
+      b.addEventListener('click', () => { champ.value = x.slice(0, MAX_QUESTION); champ.focus(); });
+      bloc.append(b);
+    }
+    carte.insertBefore(bloc, carte.querySelector('label') || champ);
+  }
+  function listeGroupee(zone, items, fabrique, cle, textes) {
+    zone.replaceChildren();
+    if (!items.length) { zone.append(el('p', { class: 'vide', texte: textes.vide })); return null; }
+    const recherche = el('input', { type: 'search', class: 'recherche', maxlength: 60,
+      placeholder: textes.recherche, 'aria-label': textes.recherche });
+    const compte = el('p', { class: 'aide compte', role: 'status' });
+    const corps = el('div', { class: 'groupes' });
+    const groupes = [], entrees = [];
+    const memoire = memoireGroupes(cle);
+    let ouverte = null;                      // une seule saisie dépliée à la fois dans cette liste
+
+    const fermer = () => {
+      if (!ouverte) return;
+      ouverte.hote.replaceChildren();
+      ouverte.bouton.setAttribute('aria-expanded', 'false');
+      ouverte.li.classList.remove('ouverte');
+      ouverte = null;
+    };
+    const ouvrir = (e) => {
+      if (ouverte === e) { fermer(); return null; }
+      fermer();
+      const carte = fabrique(e.item);
+      if (textes.exemples) chipsExemples(carte, e.item);
+      e.hote.replaceChildren(carte);
+      e.bouton.setAttribute('aria-expanded', 'true');
+      e.li.classList.add('ouverte');
+      e.details.open = true;
+      ouverte = e;
+      const champ = carte.querySelector('textarea');
+      if (champ) { try { champ.focus({ preventScroll: true }); } catch (_) { champ.focus(); } }
+      try { e.li.scrollIntoView({ block: 'nearest' }); } catch (_) { /* navigateur ancien */ }
+      return carte;
+    };
+
+    grouper(items).forEach((g, i) => {
+      const details = el('details', { class: 'groupe' });
+      const nb = el('span', { class: 'groupe-nombre' });
+      details.append(el('summary', {}, el('span', { class: 'groupe-titre', texte: g.categorie }), nb));
+      const ul = el('ul', { class: 'entrees' });
+      const siennes = [];
+      for (const item of g.items) {
+        const bouton = el('button', { type: 'button', class: 'entree', 'aria-expanded': 'false' },
+          el('span', { class: 'entree-titre', texte: item.titre || item.ref }),
+          el('span', { class: 'entree-desc', texte: item.description || '' }));
+        const hote = el('div', { class: 'hote' });
+        const li = el('li', {}, bouton, hote);
+        const e = { item: item, li: li, bouton: bouton, hote: hote, details: details,
+          mots: sansAccent([item.titre, item.description, g.categorie, tableau(item.exemples).join(' ')].join(' ')) };
+        bouton.addEventListener('click', () => ouvrir(e));
+        ul.append(li);
+        siennes.push(e);
+        entrees.push(e);
+      }
+      details.append(ul);
+      details.open = memoire ? memoire.indexOf(g.categorie) >= 0 : i === 0;
+      details.addEventListener('toggle', () => noterGroupe(cle, g.categorie, details.open));
+      groupes.push({ details: details, entrees: siennes });
+      corps.append(details);
+    });
+
+    const filtrer = () => {
+      const q = sansAccent(recherche.value).trim();
+      let vus = 0;
+      for (const g of groupes) {
+        let visibles = 0;
+        for (const e of g.entrees) {
+          const vu = !q || e.mots.indexOf(q) >= 0;
+          e.li.hidden = !vu;
+          if (vu) { visibles++; vus++; }
+        }
+        g.details.hidden = visibles === 0;
+        g.details.querySelector('.groupe-nombre').textContent = String(visibles);
+        if (q && visibles) g.details.open = true;
+      }
+      if (ouverte && ouverte.li.hidden) fermer();
+      compte.textContent = q ? (vus + (vus === 1 ? ' résultat' : ' résultats')) : textes.compte(items.length);
+    };
+    recherche.addEventListener('input', filtrer);
+    zone.append(el('div', { class: 'barre-liste' }, recherche, compte), corps);
+    filtrer();
+    return { ouvrir: ouvrir, entrees: entrees };
+  }
+  function ouvrirAssistant(ref) {
+    const l = etat.listeAcces;
+    if (!l || !l.entrees.length) return null;
+    let e = ref ? l.entrees.find((x) => x.item.ref === ref) : null;
+    if (!e) e = l.entrees.find((x) => x.item.ref === 'llm-local');
+    if (!e) e = l.entrees.find((x) => /^llm-/.test(String(x.item.ref))) || l.entrees[0];
+    if (e.bouton.getAttribute('aria-expanded') !== 'true') l.ouvrir(e);
+    return e;
+  }
+
   function afficherCatalogue(c) {
-    const accordes = tableau(c && c.accordes);
-    const proposes = tableau(c && c.proposes);
+    const accordes = tableau(c && c.accordes).filter((i) => i && i.ref);
+    const proposes = tableau(c && c.proposes).filter((i) => i && i.ref);
     etat.titres = {};
-    for (const i of accordes.concat(proposes)) if (i && i.ref) etat.titres[i.ref] = i.titre || i.ref;
-    const zoneA = $('#liste-acces');
-    zoneA.replaceChildren(...accordes.filter((i) => i && i.ref).map(carteAcces));
-    if (!zoneA.children.length) zoneA.append(el('p', { class: 'vide', texte: 'Aucun accès pour le moment. Vous pouvez en demander ci-dessous.' }));
-    const zoneP = $('#liste-proposes');
-    zoneP.replaceChildren(...proposes.filter((i) => i && i.ref).map(carteProposee));
-    if (!zoneP.children.length) zoneP.append(el('p', { class: 'vide', texte: 'Aucun autre élément disponible pour le moment.' }));
+    for (const i of accordes.concat(proposes)) etat.titres[i.ref] = i.titre || i.ref;
+    // re-rendu seulement si la liste a changé : une question en cours de saisie n'est pas effacée
+    const signature = JSON.stringify([accordes.map((i) => i.ref), proposes.map((i) => i.ref),
+      etat.demandes.filter((d) => d && d.statut === 'en_attente').map((d) => d.ref)]);
+    if (signature === etat.signatureCatalogue && etat.listeAcces) { etat.catalogue = c; return; }
+    etat.signatureCatalogue = signature;
+    etat.listeAcces = listeGroupee($('#liste-acces'), accordes, carteAcces, 'acces', {
+      vide: 'Aucun accès pour le moment. Vous pouvez en demander ci-dessous.',
+      recherche: 'Rechercher un assistant…', exemples: true,
+      compte: (n) => 'Choisissez un assistant pour ouvrir sa zone de question (' + n + (n === 1 ? ' accès' : ' accès') + ').' });
+    listeGroupee($('#liste-proposes'), proposes, carteProposee, 'proposes', {
+      vide: 'Aucun autre élément disponible pour le moment.',
+      recherche: 'Rechercher dans ce qui est disponible…',
+      compte: (n) => n + (n === 1 ? ' élément peut vous être ouvert sur demande.' : ' éléments peuvent vous être ouverts sur demande.') });
     etat.catalogue = c;
   }
 

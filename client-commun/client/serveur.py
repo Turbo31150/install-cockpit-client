@@ -60,7 +60,7 @@ from datetime import date, datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 
-VERSION = "1.3.0"
+VERSION = "1.5.0"
 HOTE = "127.0.0.1"
 PORT_DEFAUT = 8610
 PASSERELLE_DEFAUT = "http://100.111.120.117:18900"

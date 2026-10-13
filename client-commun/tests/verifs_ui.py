@@ -114,6 +114,23 @@ def interface_deverrouillee(banc, chrome=None, profil=None):
         ok("interface : la rubrique Assistants est affichée",
            nav.evaluer("document.getElementById('vue-assistants').hidden") is False)
 
+        # ---- liste d'assistants rangée (catégories repliables, recherche, une seule saisie)
+        groupes = nav.evaluer("document.querySelectorAll('#liste-acces details.groupe').length")
+        ok("interface : accès rangés par catégorie repliable", (groupes or 0) >= 2, groupes)
+        saisies = nav.evaluer("document.querySelectorAll('#liste-acces textarea').length")
+        ok("interface : une seule zone de saisie ouverte à la fois", saisies == 1, saisies)
+        filtre = nav.evaluer("""(() => {
+          const r = document.querySelector('#liste-acces input.recherche');
+          const compter = () => [...document.querySelectorAll('#liste-acces ul.entrees > li')]
+            .filter((li) => !li.hidden).length;
+          r.value = 'programmation'; r.dispatchEvent(new Event('input'));
+          const n = compter();
+          r.value = ''; r.dispatchEvent(new Event('input'));
+          return [n, compter()];
+        })()""")
+        ok("interface : recherche dans la liste (1 résultat, puis liste complète)",
+           isinstance(filtre, list) and filtre[0] == 1 and filtre[1] >= 5, filtre)
+
         # ---- Outils
         nav.evaluer("document.querySelector('.rubrique[data-vue=\"outils\"]').click()")
         time.sleep(0.5)
@@ -155,7 +172,7 @@ def interface_deverrouillee(banc, chrome=None, profil=None):
            m and m["vue"] and m["libelle"] in ("Mon Mac", "Mon PC", "Ma machine"), m)
         ok("interface : processeur, mémoire, disque et système renseignés",
            m and m["cpu"] not in ("", "–") and "Go" in m["ram"] and "Go libres" in m["disque"] and m["os"] not in ("", "–"), m)
-        ok("interface : version du cockpit affichée", m and m["version"] == "1.3.0", m)
+        ok("interface : version du cockpit affichée", m and m["version"] == "1.5.0", m)
         ok("interface : conseils affichés et jauges visibles", m and m["conseils"] >= 1 and m["barres"] == 2, m)
         ajout = nav.evaluer("""(async () => {
           const b = [...document.querySelectorAll('#machine-conseils button')].find((x) => x.textContent === 'Ajouter à mes tâches');
