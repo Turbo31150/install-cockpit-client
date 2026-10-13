@@ -1,0 +1,5 @@
+#!/bin/bash
+# stub : « tailscale status --json » ; état lu dans $HOME/.stub-tailscale (défaut Running)
+ETAT="Running"; [ -f "$HOME/.stub-tailscale" ] && ETAT="$(cat "$HOME/.stub-tailscale")"
+[ "${1:-}" = "status" ] || exit 2
+printf '{"BackendState": "%s", "Self": {}}\n' "$ETAT"

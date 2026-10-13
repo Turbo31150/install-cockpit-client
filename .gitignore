@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+dist/
+client-windows/cache/
+client-commun/outils/termes-prives.txt
+*.zip
+*.sha256

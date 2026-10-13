@@ -1,0 +1,8 @@
+#!/bin/bash
+# stub sysctl macOS
+case "${2:-}" in
+  machdep.cpu.brand_string) echo "Apple M2" ;;
+  hw.memsize) echo 17179869184 ;;
+  kern.boottime) echo "{ sec = $(( $(date +%s) - 3600 )), usec = 12345 } Mon Oct 13 10:00:00 2026" ;;
+  *) exit 1 ;;
+esac

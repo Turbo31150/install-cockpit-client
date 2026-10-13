@@ -1,0 +1,47 @@
+#!/bin/bash
+# stub de test de launchctl : lance le ProgramArguments du plist en arrière-plan avec un
+# environnement minimal (comme launchd) ; suit le pid par libellé dans $HOME/.stub-launchctl.
+ETAT="$HOME/.stub-launchctl"; mkdir -p "$ETAT"
+STUBS="$(cd "$(dirname "$0")" && pwd)"
+echo "launchctl $*" >> "$ETAT/journal"
+demarrer() {  # $1 = plist
+  /usr/bin/python3 -I - "$1" "$ETAT" "$STUBS" <<'PY'
+import os, plistlib, subprocess, sys
+p, etat, stubs = sys.argv[1:4]
+d = plistlib.load(open(p, "rb"))
+lab = d["Label"]
+pidf = os.path.join(etat, lab + ".pid")
+if os.path.exists(pidf):
+    try:
+        os.kill(int(open(pidf).read()), 0)
+        sys.exit(5)  # déjà chargé
+    except OSError:
+        pass
+env = {"HOME": os.environ["HOME"], "USER": os.environ.get("USER", "x"), "LOGNAME": os.environ.get("USER", "x"),
+       "SHELL": "/bin/zsh", "TMPDIR": "/tmp"}
+env.update(d.get("EnvironmentVariables", {}))
+env["PATH"] = stubs + ":" + env.get("PATH", "/usr/bin:/bin")
+out = open(d["StandardOutPath"], "a"); err = open(d["StandardErrorPath"], "a")
+pr = subprocess.Popen(d["ProgramArguments"], cwd=d.get("WorkingDirectory"), env=env, stdout=out, stderr=err,
+                      stdin=subprocess.DEVNULL, start_new_session=True, close_fds=True)
+open(pidf, "w").write(str(pr.pid)); open(os.path.join(etat, lab + ".plist"), "w").write(p)
+PY
+}
+arreter() {  # $1 = libellé
+  f="$ETAT/$1.pid"; [ -f "$f" ] || return 3
+  kill "$(cat "$f")" 2>/dev/null
+  for _ in 1 2 3 4 5 6 7 8 9 10; do kill -0 "$(cat "$f")" 2>/dev/null || break; sleep 0.3; done
+  kill -9 "$(cat "$f")" 2>/dev/null; rm -f "$f"; return 0
+}
+case "${1:-}" in
+  print) exit 0 ;;
+  bootstrap) demarrer "$3" ;;
+  load) if [ "$2" = "-w" ]; then demarrer "$3"; else demarrer "$2"; fi ;;
+  bootout) arreter "${2##*/}" ;;
+  unload) arreter "$(basename "$2" .plist)" ;;
+  kickstart)
+    if [ "$2" = "-k" ]; then lab="${3##*/}"; arreter "$lab"; demarrer "$(cat "$ETAT/$lab.plist")"
+    else lab="${2##*/}"; [ -f "$ETAT/$lab.pid" ] && kill -0 "$(cat "$ETAT/$lab.pid")" 2>/dev/null || { [ -f "$ETAT/$lab.plist" ] && demarrer "$(cat "$ETAT/$lab.plist")"; }; fi ;;
+  list) for f in "$ETAT"/*.pid; do [ -f "$f" ] && kill -0 "$(cat "$f")" 2>/dev/null && printf '%s\t0\t%s\n' "$(cat "$f")" "$(basename "$f" .pid)"; done; exit 0 ;;
+  *) exit 0 ;;
+esac

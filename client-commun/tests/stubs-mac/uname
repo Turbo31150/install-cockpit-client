@@ -1,0 +1,3 @@
+#!/bin/bash
+# stub de test : se présente comme macOS (arm64)
+case "${1:-}" in -s) echo Darwin ;; -m) echo arm64 ;; *) exec /usr/bin/uname "$@" ;; esac

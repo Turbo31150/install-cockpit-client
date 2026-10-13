@@ -1,0 +1,4 @@
+#!/bin/bash
+# stub : plutil -lint FICHIER via plistlib
+[ "${1:-}" = "-lint" ] || exit 2
+/usr/bin/python3 -I -c 'import plistlib, sys; plistlib.load(open(sys.argv[1], "rb")); print(sys.argv[1] + ": OK")' "$2"

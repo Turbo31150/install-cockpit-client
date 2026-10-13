@@ -1,0 +1,92 @@
+AlkymIA · Turbo OS — votre cockpit pour Windows
+===============================================
+
+Ce que c'est
+  Une petite application locale : une page dans votre navigateur
+  (http://127.0.0.1:8610) qui donne accès aux éléments ouverts pour vous
+  (domaines, guides, compétences) et au conseil d'experts, à travers Tailscale.
+  Elle contient aussi votre espace de travail : vos tâches, votre planning,
+  vos notes et une boîte à outils, tous enregistrés sur cet ordinateur.
+  Python est fourni dans le paquet (version officielle embarquée, vérifiée) :
+  rien d'autre à installer.
+
+Votre clé ouvre le cockpit (nouveau)
+  La clé n'est PLUS enregistrée sur l'ordinateur. À chaque ouverture, le
+  cockpit affiche un écran « Collez votre clé d'accès » : sans la clé, rien
+  ne s'affiche et rien ne sort de cet ordinateur (pas même l'état technique).
+  La clé reste en mémoire le temps de la session ; elle est oubliée :
+    - quand vous appuyez sur « Verrouiller » ;
+    - après 30 minutes sans activité ;
+    - à la fermeture de session ou au redémarrage.
+  Gardez-la dans votre gestionnaire de mots de passe : vous la collerez
+  à chaque ouverture.
+
+Avant d'installer
+  1. Tailscale installé et connecté avec le compte qui a reçu l'invitation.
+  2. Votre clé d'accès (reçue séparément). Elle est personnelle et valable
+     48 heures : copiez-la en entier, sans espace, et ne la recopiez jamais
+     dans un compte rendu, un message ou une capture d'écran.
+  3. Décompressez le fichier zip (clic droit > Extraire tout...).
+
+Installer (aucun droit administrateur demandé)
+  Double-cliquez sur INSTALLER-WINDOWS.bat. La clé demandée pendant
+  l'installation sert seulement à tester l'accès : elle n'est pas enregistrée
+  (vous pouvez appuyer sur Entrée pour passer).
+  Si Windows affiche « Windows a protégé votre ordinateur » :
+  « Informations complémentaires » > « Exécuter quand même ».
+  Ou, dans une invite de commandes ouverte dans ce dossier :
+      INSTALLER-WINDOWS.bat --cle VOTRE_CLE
+  La dernière ligne résume l'état :
+      FINI - cockpit: OK - passerelle: OK
+  Ensuite : raccourci « AlkymIA Cockpit » sur le Bureau,
+  ou http://127.0.0.1:8610 dans votre navigateur.
+
+Votre accès
+  Il a une date de fin, affichée dans le cockpit avec le temps restant.
+  Une fois cette date passée, le cockpit affiche « Votre accès a expiré » :
+  une nouvelle clé doit vous être fournie, puis installée de la même façon.
+
+Ce qui est transmis
+  Ce cockpit transmet l'état technique de la machine (processeur, mémoire, disque, durée de fonctionnement, système d'exploitation) pour la supervision. Aucun nom de machine, aucun fichier ni contenu personnel.
+  Cet envoi n'a lieu QUE lorsque le cockpit est ouvert avec votre clé :
+  cockpit verrouillé, rien ne sort.
+  Détail, toutes les 60 secondes : système et version, modèle et charge du
+  processeur, nombre de cœurs, mémoire totale et utilisée, espace disque total
+  et libre, durée depuis le démarrage, version du cockpit.
+  Vos questions partent uniquement quand vous les envoyez. La clé n'est jamais
+  visible dans le navigateur ni dans les journaux, et n'est jamais enregistrée.
+  Vos tâches, votre planning et vos notes ne sortent JAMAIS de cet ordinateur.
+
+Ce qui est installé (pour votre compte uniquement)
+  %LOCALAPPDATA%\Cockpit\              Python embarqué, cockpit, configuration, journaux
+  %LOCALAPPDATA%\Cockpit\donnees.json  vos tâches, créneaux et notes
+  Dossier Démarrage : « AlkymIA Cockpit »   lancement à l'ouverture de session
+  Bureau : « AlkymIA Cockpit »              ouvre le cockpit
+
+Sécurité
+  - Vos notes et vos tâches sont enregistrées en clair dans votre profil
+    utilisateur (accès réservé à votre compte) : elles restent lisibles par qui
+    a accès à votre session Windows. La clé protège l'accès aux assistants, pas
+    vos fichiers locaux. Pour une copie de sauvegarde : « Mes tâches » >
+    « Exporter en JSON ».
+  - Le cockpit écoute uniquement sur 127.0.0.1 : rien n'est ouvert sur le réseau.
+  - Aucun droit administrateur, aucun service Windows, aucun changement de
+    pare-feu ; Tailscale n'est pas modifié.
+  - La page ne charge aucune ressource extérieure.
+
+Désinstaller
+  Double-cliquez sur DESINSTALLER-WINDOWS.bat
+  Attention : la désinstallation supprime aussi vos tâches et vos notes.
+  Exportez-les avant (« Mes tâches » > « Exporter en JSON »).
+
+En cas de problème
+  - Tailscale déjà connecté à un autre compte : dans le menu Tailscale (près
+    de l'horloge), basculez sur le compte qui a reçu l'invitation, puis
+    attendez que l'appareil soit approuvé avant de relancer l'installeur.
+  - « passerelle: KO » : le message juste au-dessus donne la cause
+    (Tailscale déconnecté, appareil en attente d'approbation, clé refusée,
+    accès expiré) et la marche à suivre.
+  - « Cockpit verrouillé » et vous n'avez plus la clé : demandez-en une
+    nouvelle à votre interlocuteur, puis collez-la dans l'écran d'ouverture.
+  - Port 8610 déjà pris :  INSTALLER-WINDOWS.bat --port 8620
+  - Journal : %LOCALAPPDATA%\Cockpit\journaux\client.log

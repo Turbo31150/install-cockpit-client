@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="referrer" content="no-referrer">
+<title>AlkymIA · Turbo OS — Votre cockpit</title>
+<link rel="icon" href="/icone.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/app.css">
+<script src="/app.js" defer></script>
+<script src="/espace.js" defer></script>
+<script src="/outils.js" defer></script>
+</head>
+<body>
+<header class="entete">
+  <div class="entete-titre">
+    <h1><span class="marque">AlkymIA · Turbo OS</span> <span class="tiret" aria-hidden="true">—</span> Votre cockpit</h1>
+    <p class="identite" id="identite">
+      <span id="alias">Chargement…</span>
+      <span class="sep" aria-hidden="true">·</span>
+      <span id="abonnement"></span>
+    </p>
+  </div>
+  <div class="entete-etat">
+    <label class="theme" for="theme">Affichage</label>
+    <select id="theme">
+      <option value="auto">Automatique</option>
+      <option value="clair">Clair</option>
+      <option value="sombre">Sombre</option>
+    </select>
+    <button type="button" class="bouton discret" id="verrouiller" hidden>Verrouiller</button>
+    <span id="connexion" class="pastille attente" role="status" aria-live="polite">Connexion…</span>
+  </div>
+</header>
+
+<div id="bandeau" class="bandeau" role="alert" hidden></div>
+<p id="journal-erreurs" class="erreur" role="alert" hidden></p>
+
+<main id="ecran-verrou" class="ecran-verrou" hidden>
+  <p class="marque">AlkymIA · Turbo OS</p>
+  <h2>Votre cockpit</h2>
+  <p id="verrou-message">Collez votre clé d'accès pour ouvrir le cockpit.</p>
+  <form id="form-verrou" autocomplete="off">
+    <label for="verrou-cle">Collez votre clé d'accès</label>
+    <input type="password" id="verrou-cle" autocomplete="off" spellcheck="false" autocapitalize="none"
+           autocorrect="off" required placeholder="Clé reçue (collez-la en entier)">
+    <div class="actions actions-centrees">
+      <button type="submit" class="bouton" id="verrou-ouvrir">Ouvrir</button>
+      <span class="aide" id="verrou-etat" role="status" aria-live="polite"></span>
+    </div>
+  </form>
+  <p class="aide">La clé n'est jamais enregistrée : elle reste en mémoire le temps de la session et vous est redemandée à chaque ouverture, après un redémarrage ou 30 minutes sans activité.</p>
+  <p class="aide" id="verrou-reseau"></p>
+</main>
+
+<main id="principal">
+  <nav class="rubriques" id="rubriques" aria-label="Rubriques du cockpit">
+    <button type="button" class="rubrique" data-vue="assistants">Assistants</button>
+    <button type="button" class="rubrique" data-vue="taches">Mes tâches</button>
+    <button type="button" class="rubrique" data-vue="planning">Mon planning</button>
+    <button type="button" class="rubrique" data-vue="notes">Mes notes</button>
+    <button type="button" class="rubrique" data-vue="outils">Outils</button>
+    <button type="button" class="rubrique" data-vue="acces">Mon accès</button>
+  </nav>
+
+  <div class="contenu">
+    <!-- ------------------------------------------------------------ Assistants -->
+    <section class="vue" id="vue-assistants" aria-labelledby="t-acces" hidden>
+      <h2 id="t-acces">Vos accès</h2>
+      <div id="liste-acces" class="grille"><p class="vide">Chargement…</p></div>
+
+      <h2 id="t-proposes">Disponible sur demande</h2>
+      <div id="liste-proposes" class="grille"><p class="vide">Chargement…</p></div>
+
+      <h2 id="t-demandes">Vos demandes</h2>
+      <div id="liste-demandes"><p class="vide">Chargement…</p></div>
+
+      <div class="titre-ligne">
+        <h2 id="t-historique">Historique sur cet ordinateur</h2>
+        <button type="button" id="effacer-historique" class="bouton discret">Effacer l'historique</button>
+      </div>
+      <div id="historique"></div>
+    </section>
+
+    <!-- ------------------------------------------------------------ Mes tâches -->
+    <section class="vue" id="vue-taches" aria-labelledby="t-taches" hidden>
+      <h2 id="t-taches">Mes tâches</h2>
+      <p class="aide">Vos tâches restent sur cet ordinateur : elles ne sont jamais envoyées.</p>
+
+      <form class="bloc formulaire" id="form-tache" autocomplete="off">
+        <div class="champs">
+          <div class="champ grand">
+            <label for="tache-titre">Tâche</label>
+            <input type="text" id="tache-titre" maxlength="200" required placeholder="Ce qu'il y a à faire">
+          </div>
+          <div class="champ">
+            <label for="tache-priorite">Priorité</label>
+            <select id="tache-priorite">
+              <option value="haute">Haute</option>
+              <option value="normale" selected>Normale</option>
+              <option value="basse">Basse</option>
+            </select>
+          </div>
+          <div class="champ">
+            <label for="tache-echeance">Échéance</label>
+            <input type="date" id="tache-echeance">
+          </div>
+          <div class="champ">
+            <label for="tache-heure">Heure</label>
+            <input type="time" id="tache-heure">
+          </div>
+        </div>
+        <div class="champ">
+          <label for="tache-detail">Détail (facultatif)</label>
+          <textarea id="tache-detail" rows="2" maxlength="2000" placeholder="Précisions, contexte, lien interne…"></textarea>
+        </div>
+        <div class="actions">
+          <button type="submit" class="bouton">Ajouter la tâche</button>
+          <span class="aide" id="tache-message" role="status" aria-live="polite"></span>
+        </div>
+      </form>
+
+      <div class="bloc barre-filtres">
+        <div class="champ grand">
+          <label for="tache-recherche">Rechercher</label>
+          <input type="search" id="tache-recherche" maxlength="200" placeholder="Mot du titre ou du détail">
+        </div>
+        <div class="champ">
+          <label for="tache-filtre-etat">État</label>
+          <select id="tache-filtre-etat">
+            <option value="a_faire" selected>À faire</option>
+            <option value="faite">Faites</option>
+            <option value="tout">Toutes</option>
+          </select>
+        </div>
+        <div class="champ">
+          <label for="tache-filtre-priorite">Priorité</label>
+          <select id="tache-filtre-priorite">
+            <option value="" selected>Toutes</option>
+            <option value="haute">Haute</option>
+            <option value="normale">Normale</option>
+            <option value="basse">Basse</option>
+          </select>
+        </div>
+      </div>
+
+      <p class="aide" id="taches-compte"></p>
+      <div id="liste-taches"></div>
+
+      <h3 class="sous-titre">Mes données</h3>
+      <div class="bloc">
+        <p class="aide">Sauvegarde complète : tâches, créneaux et notes, dans un seul fichier JSON.</p>
+        <div class="actions">
+          <button type="button" class="bouton secondaire" id="exporter">Exporter en JSON</button>
+          <button type="button" class="bouton secondaire" id="choisir-import">Importer un fichier…</button>
+          <select id="mode-import" aria-label="Mode d'import">
+            <option value="fusionner" selected>Ajouter à l'existant</option>
+            <option value="remplacer">Remplacer tout</option>
+          </select>
+          <input type="file" id="fichier-import" accept=".json,application/json" hidden>
+          <span class="aide" id="message-donnees" role="status" aria-live="polite"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ------------------------------------------------------------ Mon planning -->
+    <section class="vue" id="vue-planning" aria-labelledby="t-planning" hidden>
+      <h2 id="t-planning">Mon planning</h2>
+      <p class="aide">Semaine construite sur cet ordinateur : vos créneaux et les échéances de vos tâches. Aucune synchronisation extérieure.</p>
+
+      <div class="bloc barre-filtres">
+        <div class="actions">
+          <button type="button" class="bouton discret" id="semaine-precedente">← Semaine précédente</button>
+          <button type="button" class="bouton discret" id="semaine-courante">Cette semaine</button>
+          <button type="button" class="bouton discret" id="semaine-suivante">Semaine suivante →</button>
+          <strong id="semaine-libelle"></strong>
+        </div>
+      </div>
+
+      <div id="semaine" class="semaine"></div>
+
+      <h3 class="sous-titre">Ajouter un créneau</h3>
+      <form class="bloc formulaire" id="form-creneau" autocomplete="off">
+        <div class="champs">
+          <div class="champ grand">
+            <label for="creneau-titre">Intitulé</label>
+            <input type="text" id="creneau-titre" maxlength="200" required placeholder="Rendez-vous, atelier, appel…">
+          </div>
+          <div class="champ">
+            <label for="creneau-jour">Jour</label>
+            <input type="date" id="creneau-jour" required>
+          </div>
+          <div class="champ">
+            <label for="creneau-debut">Début</label>
+            <input type="time" id="creneau-debut" required>
+          </div>
+          <div class="champ">
+            <label for="creneau-fin">Fin</label>
+            <input type="time" id="creneau-fin">
+          </div>
+          <div class="champ">
+            <label for="creneau-lieu">Lieu (facultatif)</label>
+            <input type="text" id="creneau-lieu" maxlength="120">
+          </div>
+        </div>
+        <div class="actions">
+          <button type="submit" class="bouton">Ajouter le créneau</button>
+          <span class="aide" id="creneau-message" role="status" aria-live="polite"></span>
+        </div>
+      </form>
+    </section>
+
+    <!-- ------------------------------------------------------------ Mes notes -->
+    <section class="vue" id="vue-notes" aria-labelledby="t-notes" hidden>
+      <h2 id="t-notes">Mes notes</h2>
+      <p class="aide">Notes en Markdown, enregistrées sur cet ordinateur uniquement.</p>
+      <div class="deux-colonnes">
+        <div>
+          <div class="bloc">
+            <div class="champ">
+              <label for="note-recherche">Rechercher dans toutes les notes</label>
+              <input type="search" id="note-recherche" maxlength="200" placeholder="Mot du titre ou du texte">
+            </div>
+            <div class="actions">
+              <button type="button" class="bouton" id="note-nouvelle">Nouvelle note</button>
+            </div>
+          </div>
+          <div id="liste-notes" class="liste-notes"></div>
+        </div>
+        <div>
+          <form class="bloc formulaire" id="form-note" autocomplete="off">
+            <div class="champ">
+              <label for="note-titre">Titre</label>
+              <input type="text" id="note-titre" maxlength="200" required placeholder="Titre de la note">
+            </div>
+            <div class="champ">
+              <label for="note-texte">Texte (Markdown)</label>
+              <textarea id="note-texte" rows="14" maxlength="20000" placeholder="# Titre&#10;&#10;- un point&#10;- un autre point"></textarea>
+            </div>
+            <div class="actions">
+              <button type="submit" class="bouton">Enregistrer</button>
+              <button type="button" class="bouton secondaire" id="note-apercu">Aperçu</button>
+              <button type="button" class="bouton secondaire" id="note-assistant">Demander à l'assistant</button>
+              <button type="button" class="bouton discret" id="note-supprimer">Supprimer</button>
+              <span class="aide" id="note-message" role="status" aria-live="polite"></span>
+            </div>
+          </form>
+          <div class="bloc" id="note-apercu-zone" hidden>
+            <h3 class="sous-titre">Aperçu</h3>
+            <div id="note-rendu" class="markdown"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ------------------------------------------------------------ Outils -->
+    <section class="vue" id="vue-outils" aria-labelledby="t-outils" hidden>
+      <h2 id="t-outils">Outils</h2>
+      <p class="aide">Tous ces outils travaillent dans votre navigateur : rien n'est envoyé, ni enregistré.</p>
+      <div id="liste-outils" class="grille"></div>
+    </section>
+
+    <!-- ------------------------------------------------------------ Mon accès -->
+    <section class="vue" id="vue-acces" aria-labelledby="t-mon-acces" hidden>
+      <h2 id="t-mon-acces">Mon accès</h2>
+      <div class="resume" aria-label="Votre abonnement">
+        <div class="resume-bloc">
+          <span class="resume-libelle">Votre espace</span>
+          <span class="resume-valeur" id="acces-alias">–</span>
+          <span class="resume-note" id="acces-abonnement"></span>
+        </div>
+        <div class="resume-bloc">
+          <span class="resume-libelle">Questions aujourd'hui</span>
+          <span class="resume-valeur" id="quota">–</span>
+          <progress id="quota-barre" max="1" value="0" hidden></progress>
+        </div>
+        <div class="resume-bloc" id="echeance">
+          <span class="resume-libelle">Échéance de l'accès</span>
+          <span class="resume-valeur" id="echeance-date">–</span>
+          <span class="resume-note" id="echeance-reste"></span>
+        </div>
+        <div class="resume-bloc">
+          <span class="resume-libelle">Connexion au service</span>
+          <span class="resume-valeur" id="acces-connexion">–</span>
+          <span class="resume-note" id="acces-connexion-note"></span>
+        </div>
+      </div>
+      <div class="actions">
+        <button type="button" class="bouton secondaire" id="acces-actualiser">Actualiser</button>
+      </div>
+      <h3 class="sous-titre">Transparence</h3>
+      <div class="bloc">
+        <p>Ce cockpit transmet l'état technique de la machine (processeur, mémoire, disque, durée de fonctionnement, système d'exploitation) pour la supervision. Aucun nom de machine, aucun fichier ni contenu personnel.</p>
+        <p>Cet envoi n'a lieu que lorsque le cockpit est ouvert avec votre clé : cockpit verrouillé, rien ne sort.</p>
+        <p>Vos questions partent uniquement quand vous les envoyez. Vos tâches, vos créneaux et vos notes ne sortent jamais de cet ordinateur.</p>
+        <p>Votre clé d'accès n'est pas enregistrée : elle reste en mémoire pendant la session, n'est jamais transmise au navigateur, et vous est redemandée à chaque ouverture.</p>
+      </div>
+    </section>
+  </div>
+</main>
+
+<main id="ecran-expire" class="ecran-expire" hidden>
+  <p class="marque">AlkymIA · Turbo OS</p>
+  <h2>Votre accès a expiré.</h2>
+  <p>Ce cockpit n'est plus utilisable avec la clé actuelle.</p>
+  <p>Pour continuer, une nouvelle clé d'accès doit vous être fournie, puis installée sur cet ordinateur.</p>
+</main>
+
+<footer id="pied" class="pied">
+  <p>Ce cockpit transmet l'état technique de la machine (processeur, mémoire, disque, durée de fonctionnement, système d'exploitation) pour la supervision, et seulement lorsqu'il est ouvert avec votre clé. Aucun nom de machine, aucun fichier ni contenu personnel.</p>
+  <p>Votre clé d'accès n'est jamais enregistrée ni transmise au navigateur : elle est demandée à chaque ouverture. L'historique des réponses est conservé dans ce navigateur ; vos tâches, créneaux et notes sont enregistrés sur cet ordinateur.</p>
+</footer>
+<noscript><p class="bandeau">Cette page a besoin de JavaScript pour fonctionner.</p></noscript>
+</body>
+</html>

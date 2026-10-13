@@ -1,0 +1,5 @@
+#!/bin/bash
+echo "Processes: 500 total"
+echo "CPU usage: 10.0% user, 5.0% sys, 85.0% idle"
+echo "Processes: 501 total"
+echo "CPU usage: 7.5% user, 2.5% sys, 90.0% idle"

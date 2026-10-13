@@ -1,0 +1,125 @@
+AlkymIA · Turbo OS — votre cockpit pour macOS
+=============================================
+
+Ce que c'est
+  Une application de bureau : « AlkymIA Cockpit » s'ouvre dans sa propre
+  fenêtre (pas d'onglet, pas de barre d'adresse), avec son icône dans le
+  Dock. Elle donne accès aux éléments ouverts pour vous (domaines, guides,
+  compétences) et au conseil d'experts, à travers Tailscale. Elle contient
+  aussi votre espace de travail : vos tâches, votre planning, vos notes et
+  une boîte à outils, tous enregistrés sur ce Mac uniquement.
+  Tout reste local : la fenêtre affiche http://127.0.0.1:8610, un petit
+  service qui tourne sur ce Mac.
+
+La fenêtre d'application
+  Elle s'appuie sur un navigateur à moteur Chromium déjà installé
+  (Google Chrome, Chromium, Brave, Microsoft Edge ou Arc, dans cet ordre),
+  lancé en mode application avec un profil séparé :
+    - aucune barre d'adresse, aucun onglet, aucune extension ;
+    - vos onglets, vos comptes et votre historique personnels ne sont pas
+      touchés, et le cockpit n'y apparaît pas ;
+    - la taille et la position de la fenêtre sont retenues.
+  Fermer la fenêtre (⌘W, ⌘Q ou le bouton rouge) n'arrête pas le service :
+  rouvrez « AlkymIA Cockpit » et vous retrouvez votre cockpit — en
+  recollant votre clé si la session a expiré.
+  Si aucun de ces navigateurs n'est installé, le cockpit s'ouvre dans votre
+  navigateur habituel (avec barre d'adresse et onglets) et un message vous
+  l'explique. Pour choisir vous-même le navigateur :
+      COCKPIT_NAVIGATEUR="/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
+
+Votre clé ouvre le cockpit (nouveau)
+  La clé n'est PLUS enregistrée sur l'ordinateur. À chaque ouverture, le
+  cockpit affiche un écran « Collez votre clé d'accès » : sans la clé, rien
+  ne s'affiche et rien ne sort de ce Mac (pas même l'état technique).
+  La clé reste en mémoire le temps de la session ; elle est oubliée :
+    - quand vous appuyez sur « Verrouiller » ;
+    - après 30 minutes sans activité ;
+    - au redémarrage du Mac ou de l'application.
+  Gardez-la dans votre gestionnaire de mots de passe : vous la collerez
+  à chaque ouverture.
+
+Avant d'installer
+  1. Tailscale installé et connecté avec le compte qui a reçu l'invitation.
+  2. Python 3.10 ou plus récent. Le python3 fourni par Apple (3.9) ne suffit
+     pas : installez Python depuis https://www.python.org/downloads/macos/
+     ou avec Homebrew (« brew install python »). L'installeur vérifie.
+  3. Votre clé d'accès (reçue séparément). Elle est personnelle et valable
+     48 heures : copiez-la en entier, sans espace, et ne la recopiez jamais
+     dans un compte rendu, un message ou une capture d'écran.
+
+Installer (aucun mot de passe administrateur demandé)
+  Ouvrez le Terminal, puis :
+      cd ~/Downloads/cockpit-client-mac
+      bash INSTALLER-MAC.command --cle 'VOTRE_CLE'
+  Mettez la clé entre apostrophes. Elle sert seulement à tester l'accès
+  pendant l'installation : elle n'est pas enregistrée. Sans --cle,
+  l'installation fonctionne aussi (la clé sera demandée à l'ouverture).
+  La dernière ligne résume l'état :
+      FINI - cockpit: OK - passerelle: OK
+  Ensuite : ouvrez « AlkymIA Cockpit » dans ~/Applications,
+  ou allez sur http://127.0.0.1:8610
+
+Votre accès
+  Il a une date de fin, affichée dans le cockpit avec le temps restant.
+  Une fois cette date passée, le cockpit affiche « Votre accès a expiré » :
+  une nouvelle clé doit vous être fournie, puis installée avec la même commande.
+
+Ce qui est transmis
+  Ce cockpit transmet l'état technique de la machine (processeur, mémoire, disque, durée de fonctionnement, système d'exploitation) pour la supervision. Aucun nom de machine, aucun fichier ni contenu personnel.
+  Cet envoi n'a lieu QUE lorsque le cockpit est ouvert avec votre clé :
+  cockpit verrouillé, rien ne sort.
+  Détail, toutes les 60 secondes : système et version, modèle et charge du
+  processeur, nombre de cœurs, mémoire totale et utilisée, espace disque total
+  et libre, durée depuis le démarrage, version du cockpit.
+  Vos questions partent uniquement quand vous les envoyez. La clé n'est jamais
+  visible dans le navigateur ni dans les journaux, et n'est jamais enregistrée.
+  Vos tâches, votre planning et vos notes ne sortent JAMAIS de ce Mac.
+
+Ce qui est installé (dans votre session uniquement)
+  ~/Library/Application Support/Cockpit/   cockpit + configuration (lisible par vous seul)
+  ~/Library/Application Support/Cockpit/donnees.json   vos tâches, créneaux et notes
+  ~/Library/Application Support/Cockpit/navigateur     profil isolé de la fenêtre
+  ~/Library/LaunchAgents/app.cockpit.client.plist   démarrage automatique
+  ~/Library/Logs/Cockpit/                  journaux (dont fenetre.log : ouvertures)
+  ~/Applications/AlkymIA Cockpit.app       l'application (icône, Dock, Spotlight)
+
+Sécurité
+  - Vos notes et vos tâches sont enregistrées en clair dans votre dossier
+    personnel (lisible par vous seul, droits 600) : elles restent lisibles par
+    qui a accès à votre session Mac. La clé protège l'accès aux assistants,
+    pas vos fichiers locaux. Pour une copie de sauvegarde : « Mes tâches » >
+    « Exporter en JSON ».
+  - Le cockpit écoute uniquement sur 127.0.0.1 : rien n'est ouvert sur le réseau.
+  - Aucun sudo, aucun changement de pare-feu, pas de SSH ; Tailscale n'est pas modifié.
+  - La page ne charge aucune ressource extérieure.
+
+Désinstaller
+      bash DESINSTALLER-MAC.command
+  Attention : la désinstallation supprime aussi vos tâches et vos notes.
+  Exportez-les avant (« Mes tâches » > « Exporter en JSON »).
+
+En cas de problème
+  - macOS refuse d'ouvrir un fichier du paquet (« développeur non identifié ») :
+    lancez les scripts avec « bash » comme ci-dessus, ou faites clic droit >
+    Ouvrir, ou retirez la quarantaine du dossier téléchargé :
+        xattr -dr com.apple.quarantine ~/Downloads/cockpit-client-mac
+  - Tailscale déjà connecté à un autre compte : dans le menu Tailscale,
+    basculez sur le compte qui a reçu l'invitation, puis attendez que
+    l'appareil soit approuvé avant de relancer l'installeur.
+  - « passerelle: KO » : le message juste au-dessus donne la cause
+    (Tailscale déconnecté, appareil en attente d'approbation, clé refusée,
+    accès expiré) et la marche à suivre.
+  - macOS 15 ou plus récent, si l'installeur parle de « Réseau local » :
+    Réglages Système > Confidentialité et sécurité > Réseau local >
+    autoriser python3, puis relancer l'installeur.
+  - Notification « Élément d'arrière-plan ajouté » : c'est le démarrage
+    automatique du cockpit, c'est normal.
+  - « Cockpit verrouillé » et vous n'avez plus la clé : demandez-en une
+    nouvelle à votre interlocuteur, puis collez-la dans l'écran d'ouverture.
+  - La fenêtre s'ouvre dans un onglet du navigateur habituel : aucun
+    navigateur Chromium n'a été trouvé dans /Applications ni
+    ~/Applications ; installez Google Chrome, ou indiquez le vôtre avec
+    COCKPIT_NAVIGATEUR. Détail des ouvertures :
+    ~/Library/Logs/Cockpit/fenetre.log
+  - Port 8610 déjà pris :  bash INSTALLER-MAC.command --port 8620
+  - Journal : ~/Library/Logs/Cockpit/client.log

@@ -1,0 +1,2 @@
+#!/bin/bash
+echo "open $*" >> "$HOME/.stub-open.log"
