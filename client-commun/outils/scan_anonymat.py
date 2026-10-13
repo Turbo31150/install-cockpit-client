@@ -64,13 +64,33 @@ def analyser(nom, texte, termes, ips, trouves):
     for marque in MARQUES_AUTORISEES:
         neutre = neutre.replace(marque, " ")
     bas = normaliser(neutre)
-    formes = {t: {normaliser(t), unicodedata.normalize("NFD", t).casefold()} for t in termes}
-    for terme, variantes in formes.items():
+    # « mot:terme » = mot entier. Indispensable pour les noms de PERSONNES : sans frontière,
+    # un prénom court se retrouve au milieu de mots français courants et bloque à tort.
+    # Sans préfixe = sous-chaîne (noms de PROJET/MACHINE : ils apparaissent en composé,
+    # « nom_base.db », « VAR_SYSTEME » — une frontière de mot les laisserait passer).
+    for terme in termes:
+        # « mot=Prenom » : mot entier ET sensible à la casse. Pour les prénoms qui sont
+        # aussi des mots courants : la forme capitalisée est bloquée, la minuscule passe.
+        sensible = terme.startswith("mot=")
+        entier = sensible or terme.lower().startswith("mot:")
+        brut = terme[4:] if entier else terme
+        variantes = {brut} if sensible else {normaliser(brut), unicodedata.normalize("NFD", brut).casefold()}
+        cible = neutre if sensible else bas
+        trouve = None
         for v in variantes:
-            i = bas.find(v)
-            if i >= 0:
-                extrait = neutre[max(0, i - 25): i + len(v) + 25].replace("\n", " ")
-                trouves.append((nom, "terme « %s »" % terme, extrait))
+            if not v:
+                continue
+            if entier:
+                m = re.search(r"(?<![A-Za-z0-9])" + re.escape(v) + r"(?![A-Za-z0-9])", cible)
+                if m:
+                    trouve = m.start()
+            else:
+                i = cible.find(v)
+                if i >= 0:
+                    trouve = i
+            if trouve is not None:
+                extrait = neutre[max(0, trouve - 25): trouve + len(v) + 25].replace("\n", " ")
+                trouves.append((nom, "terme « %s »" % brut, extrait))
                 break
     for code, motif in MOTIFS.items():
         for m in re.finditer(motif, texte):

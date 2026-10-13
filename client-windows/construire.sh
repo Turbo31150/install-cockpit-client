@@ -71,7 +71,7 @@ bom() { printf '\357\273\277'; }
 for f in INSTALLER-WINDOWS.bat DESINSTALLER-WINDOWS.bat; do crlf "$ICI/paquet/$f" > "$STAGE/$f"; done
 for f in INSTALLER-WINDOWS.ps1 DESINSTALLER-WINDOWS.ps1 A-LIRE.txt; do { bom; crlf "$ICI/paquet/$f"; } > "$STAGE/$f"; done
 cp "$COMMUN/client/serveur.py" "$STAGE/client/"
-for f in index.html app.css app.js espace.js outils.js icone.svg; do
+for f in index.html app.css app.js espace.js outils.js machine.js icone.svg; do
   cp "$COMMUN/client/web/$f" "$STAGE/client/web/$f"
 done
 cp "$CACHE/$PY_ZIP" "$STAGE/python/"
@@ -94,7 +94,7 @@ else
   echo "   AVERTISSEMENT : pwsh absent (variable PWSH), syntaxe PowerShell non vérifiée"
 fi
 if command -v node >/dev/null 2>&1; then
-  for f in app.js espace.js outils.js; do node --check "$STAGE/client/web/$f"; done
+  for f in app.js espace.js outils.js machine.js; do node --check "$STAGE/client/web/$f"; done
   echo "   node --check : OK"
 fi
 

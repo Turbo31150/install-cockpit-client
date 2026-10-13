@@ -296,3 +296,18 @@ select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
   .semaine { grid-template-columns: 1fr; }
   .rubriques { flex-wrap: nowrap; overflow-x: auto; }
 }
+
+/* ---- accueil personnalisé et rubrique « Ma machine » (1.3.0) */
+.accueil { margin: 4px 0 18px; }
+.salutation { font-size: 1.35rem; font-weight: 600; margin: 0; }
+.accueil-machine { color: var(--texte-2); margin: 4px 0 0; }
+.accueil-machine a { color: var(--accent); }
+.conseils { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 8px; }
+.conseil {
+  background: var(--surface); border: 1px solid var(--bord); border-left: 4px solid var(--accent);
+  border-radius: var(--rayon); padding: 10px 14px; line-height: 1.45;
+}
+.conseil.attention { border-left-color: var(--alerte); background: var(--alerte-fond); }
+.conseil-action { margin-top: 8px; }
+.bouton.petit { padding: 4px 10px; font-size: .85rem; }
+.conseil-action .bouton:disabled { cursor: default; }

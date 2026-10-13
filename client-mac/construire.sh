@@ -39,7 +39,7 @@ cp "$ICI/paquet/INSTALLER-MAC.command" "$ICI/paquet/DESINSTALLER-MAC.command" "$
    "$ICI/paquet/lanceur.sh" "$STAGE/"
 cp "$ICI/paquet/outils/icone_icns.py" "$STAGE/outils/"
 cp "$COMMUN/client/serveur.py" "$STAGE/client/"
-for f in index.html app.css app.js espace.js outils.js icone.svg; do
+for f in index.html app.css app.js espace.js outils.js machine.js icone.svg; do
   cp "$COMMUN/client/web/$f" "$STAGE/client/web/$f"
 done
 chmod 755 "$STAGE"/*.command
@@ -61,7 +61,7 @@ fi
 PYTHONPYCACHEPREFIX="$TMP/pyc" python3 -m py_compile "$STAGE/client/serveur.py" "$STAGE/outils/icone_icns.py"
 echo "   py_compile : OK"
 if command -v node >/dev/null 2>&1; then
-  for f in app.js espace.js outils.js; do node --check "$STAGE/client/web/$f"; done
+  for f in app.js espace.js outils.js machine.js; do node --check "$STAGE/client/web/$f"; done
   echo "   node --check : OK"
 fi
 

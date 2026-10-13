@@ -119,6 +119,7 @@ def main():
         banc.verrouillage()
         banc.hote_origine()
         banc.routes()
+        banc.machine()
         banc.espace()
         banc.delais(longs=False)
         time.sleep(4)

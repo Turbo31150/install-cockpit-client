@@ -23,6 +23,7 @@ FICHIERS=(
   client-commun/client/web/app.js
   client-commun/client/web/espace.js
   client-commun/client/web/outils.js
+  client-commun/client/web/machine.js
   client-commun/client/web/icone.svg
   client-commun/outils/scan_anonymat.py
   client-commun/outils/exporter-depot.sh

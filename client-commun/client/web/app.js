@@ -17,7 +17,7 @@
   const BOUTONS_LONGS = { 'grand-conseil': 'Soumettre au conseil', 'table-ronde': 'Lancer la table ronde' };
   const CHATS = new Set(['llm-local', 'llm-code']);  // compétences en fil de discussion
   const TRES_LONGS = new Set(['table-ronde']);       // budget du serveur local : 200 s
-  const RUBRIQUES = ['assistants', 'taches', 'planning', 'notes', 'outils', 'acces'];
+  const RUBRIQUES = ['assistants', 'taches', 'planning', 'notes', 'outils', 'machine', 'acces'];
 
   const etat = { expire: false, verrouille: true, expireLe: null, demandes: [], minuteurs: [], titres: {},
                  vue: null, connexion: null, boucles: false, pret: false };
@@ -154,7 +154,8 @@
     }
     for (const s of ['#alias', '#abonnement', '#acces-alias', '#acces-abonnement', '#quota', '#echeance-date',
                      '#echeance-reste', '#acces-connexion', '#acces-connexion-note', '#taches-compte',
-                     '#tache-message', '#note-message', '#creneau-message', '#message-donnees']) {
+                     '#tache-message', '#note-message', '#creneau-message', '#message-donnees', '#salutation',
+                     '#accueil-machine']) {
       const n = $(s);
       if (n) n.textContent = '';
     }
@@ -165,6 +166,8 @@
     }
     const apercu = $('#note-apercu-zone');
     if (apercu) apercu.hidden = true;
+    const accueil = $('#accueil');
+    if (accueil) accueil.hidden = true;
     for (const nom of RUBRIQUES) {
       const v = vues[nom];
       if (v && v.oublier) { try { v.oublier(); } catch (_) { /* rien à oublier */ } }
@@ -259,8 +262,22 @@
   }
 
   // ------------------------------------------------------------------ identité, quota, échéance
+  // Un alias masqué par le service (« [masqué] ») ou générique ne s'affiche jamais tel quel.
+  function aliasLisible(alias) {
+    const a = String(alias || '').trim();
+    return a && !/[\[\]]|masqu/i.test(a) ? a : '';
+  }
+  function salutation(alias) {
+    const h = new Date().getHours();
+    const mot = (h >= 18 || h < 5) ? 'Bonsoir' : 'Bonjour';
+    const nom = aliasLisible(alias);
+    return nom && !/^votre (espace|cockpit)$/i.test(nom) ? mot + ' ' + nom : mot;
+  }
   function afficherMoi(m) {
-    const alias = m.alias || 'Votre espace';
+    const alias = aliasLisible(m.alias) || 'Votre espace';
+    $('#salutation').textContent = salutation(m.alias);
+    $('#accueil').hidden = false;
+    if (window.CKMachine) window.CKMachine.resume();
     const abonnement = 'Abonnement ' + (ABONNEMENTS[m.abonnement] || m.abonnement || 'inconnu');
     $('#alias').textContent = alias;
     $('#abonnement').textContent = abonnement;

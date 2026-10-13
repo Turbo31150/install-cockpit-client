@@ -60,7 +60,7 @@ from datetime import date, datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
 
-VERSION = "1.1.0"
+VERSION = "1.3.0"
 HOTE = "127.0.0.1"
 PORT_DEFAUT = 8610
 PASSERELLE_DEFAUT = "http://100.111.120.117:18900"
@@ -112,6 +112,7 @@ STATIQUES = {
     "/app.js": ("app.js", "text/javascript; charset=utf-8"),
     "/espace.js": ("espace.js", "text/javascript; charset=utf-8"),
     "/outils.js": ("outils.js", "text/javascript; charset=utf-8"),
+    "/machine.js": ("machine.js", "text/javascript; charset=utf-8"),
     "/icone.svg": ("icone.svg", "image/svg+xml"),
 }
 # Routes locales : traitées par ce processus, JAMAIS relayées à la passerelle.
@@ -973,6 +974,74 @@ def mesures() -> dict:
     return {c: m.get(c) for c in champs}
 
 
+def conseils_machine(m: dict) -> list:
+    """Conseils lus sur les mesures de CET ordinateur. Calculés ici, affichés ici : rien ne sort.
+
+    Ton volontairement neutre : c'est l'ordinateur personnel de l'utilisateur, pas le nôtre.
+    """
+    conseils = []
+    appareil = {"macOS": "votre Mac", "Windows": "votre PC"}.get(m.get("os") or "", "votre ordinateur")
+    total, libre = m.get("disque_total_go"), m.get("disque_libre_go")
+    if total and libre is not None and total > 0:
+        part = libre / total
+        if part < 0.10:
+            conseils.append({"sujet": "disque", "niveau": "attention", "texte":
+                "Votre disque est presque plein (%s Go libres sur %s Go) : cela peut ralentir %s. "
+                "Vider la corbeille et le dossier Téléchargements libère souvent beaucoup de place."
+                % (_nombre(libre), _nombre(total), appareil),
+                "tache": {"titre": "Libérer de la place sur le disque", "priorite": "haute", "detail":
+                          "Vider la corbeille et le dossier Téléchargements, puis repérer les gros fichiers "
+                          "devenus inutiles. Objectif : garder au moins 10 % du disque libre."}})
+        elif part < 0.20:
+            conseils.append({"sujet": "disque", "niveau": "info", "texte":
+                "L'espace disque commence à se réduire (%s Go libres sur %s Go)." % (_nombre(libre), _nombre(total)),
+                "tache": {"titre": "Faire un peu de place sur le disque", "priorite": "normale", "detail":
+                          "Vider la corbeille et trier le dossier Téléchargements."}})
+    ram_t, ram_u = m.get("ram_total_mo"), m.get("ram_utilisee_mo")
+    if ram_t and ram_u and ram_u / ram_t > 0.90:
+        conseils.append({"sujet": "memoire", "niveau": "info", "texte":
+            "La mémoire est très sollicitée en ce moment : fermer les applications que vous n'utilisez pas "
+            "rendra %s plus réactif." % appareil,
+            "tache": {"titre": "Fermer les applications inutilisées", "priorite": "normale", "detail":
+                      "Repérer les applications ouvertes en permanence et fermer celles qui ne servent pas."}})
+    if ram_t:
+        go = ram_t / 1024
+        if go < 12:
+            taille = "de 1 à 4 milliards de paramètres"
+        elif go < 20:
+            taille = "de 7 à 8 milliards de paramètres"
+        elif go < 40:
+            taille = "de 7 à 14 milliards de paramètres"
+        elif go < 80:
+            taille = "jusqu'à 32 milliards de paramètres"
+        else:
+            taille = "jusqu'à 70 milliards de paramètres"
+        unifiee = " (mémoire unifiée, partagée avec la puce graphique)" if str(m.get("cpu_modele") or "").startswith("Apple") else ""
+        conseils.append({"sujet": "ia-locale", "niveau": "info", "texte":
+            "Avec %s Go de mémoire%s, un modèle d'IA local %s, quantifié en 4 bits, tourne confortablement "
+            "sur %s." % (_nombre(round(go)), unifiee, taille, appareil),
+            "tache": {"titre": "Essayer un modèle d'IA local %s" % taille, "priorite": "basse", "detail":
+                      "Demander à l'assistant conversationnel du cockpit comment installer et lancer un modèle "
+                      "%s sur %s (quantification 4 bits)." % (taille, appareil)}})
+    uptime = m.get("uptime_s")
+    if uptime and uptime > 14 * 86400:
+        conseils.append({"sujet": "redemarrage", "niveau": "info", "texte":
+            "%s n'a pas redémarré depuis %d jours : un redémarrage de temps en temps libère de la mémoire "
+            "et applique les mises à jour." % (appareil[0].upper() + appareil[1:], uptime // 86400),
+            "tache": {"titre": "Redémarrer %s" % appareil, "priorite": "normale", "detail":
+                      "Enregistrer son travail puis redémarrer : cela libère la mémoire et applique les mises à jour."}})
+    return conseils
+
+
+def _nombre(v) -> str:
+    """12.5 -> « 12,5 » ; 24.0 -> « 24 » (affichage français)."""
+    try:
+        v = float(v)
+    except (TypeError, ValueError):
+        return "?"
+    return ("%d" % v) if v == int(v) else ("%.1f" % v).replace(".", ",")
+
+
 class Telemetrie(threading.Thread):
     """Envoie l'état technique de la machine, SEULEMENT quand le cockpit est déverrouillé.
 
@@ -1274,6 +1343,8 @@ class Gestionnaire(BaseHTTPRequestHandler):
             cle = self.session_cle()
             if cle is None:
                 return
+            if chemin == "/api/machine":
+                return self.envoyer_json(200, self.server.machine())
             if chemin in GET_LOCAL:
                 try:
                     return self.lire_espace(chemin, parse_qs(urlsplit(self.path).query))
@@ -1378,6 +1449,8 @@ class Serveur(ThreadingHTTPServer):
         self._essais = []
         self._etat_cache = (0.0, None)
         self._etat_verrou = threading.Lock()
+        self._machine_cache = (0.0, None)
+        self._machine_verrou = threading.Lock()
         super().__init__((HOTE, port), Gestionnaire)
 
     def essai_deverrouillage(self, maxi=10) -> bool:
@@ -1389,6 +1462,19 @@ class Serveur(ThreadingHTTPServer):
                 return False
             self._essais.append(maintenant)
             return True
+
+    def machine(self) -> dict:
+        """Mesures de cet ordinateur pour la rubrique « Mon Mac / Mon PC » (cache 60 s, la mesure prend ~2 s).
+
+        Mêmes champs que la télémétrie, plus les conseils : rien de nouveau ne sort, tout est servi en local.
+        """
+        with self._machine_verrou:
+            horodatage, cache = self._machine_cache
+            if cache is None or time.monotonic() - horodatage >= 60:
+                m = mesures()
+                cache = dict(m, conseils=conseils_machine(m), mesure_le=datetime.now(timezone.utc).isoformat(timespec="seconds"))
+                self._machine_cache = (time.monotonic(), cache)
+            return dict(cache)
 
     def server_bind(self):
         if os.name == "nt" and hasattr(socket, "SO_EXCLUSIVEADDRUSE"):

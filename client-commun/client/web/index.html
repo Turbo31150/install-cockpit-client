@@ -11,6 +11,7 @@
 <script src="/app.js" defer></script>
 <script src="/espace.js" defer></script>
 <script src="/outils.js" defer></script>
+<script src="/machine.js" defer></script>
 </head>
 <body>
 <header class="entete">
@@ -61,12 +62,17 @@
     <button type="button" class="rubrique" data-vue="planning">Mon planning</button>
     <button type="button" class="rubrique" data-vue="notes">Mes notes</button>
     <button type="button" class="rubrique" data-vue="outils">Outils</button>
+    <button type="button" class="rubrique" data-vue="machine" id="rubrique-machine">Ma machine</button>
     <button type="button" class="rubrique" data-vue="acces">Mon accès</button>
   </nav>
 
   <div class="contenu">
     <!-- ------------------------------------------------------------ Assistants -->
     <section class="vue" id="vue-assistants" aria-labelledby="t-acces" hidden>
+      <div class="accueil" id="accueil" hidden>
+        <p class="salutation" id="salutation"></p>
+        <p class="accueil-machine" id="accueil-machine"></p>
+      </div>
       <h2 id="t-acces">Vos accès</h2>
       <div id="liste-acces" class="grille"><p class="vide">Chargement…</p></div>
 
@@ -259,6 +265,42 @@
       <h2 id="t-outils">Outils</h2>
       <p class="aide">Tous ces outils travaillent dans votre navigateur : rien n'est envoyé, ni enregistré.</p>
       <div id="liste-outils" class="grille"></div>
+    </section>
+
+    <!-- ------------------------------------------------------------ Ma machine -->
+    <section class="vue" id="vue-machine" aria-labelledby="t-machine" hidden>
+      <h2 id="t-machine">Ma machine</h2>
+      <p class="aide">Mesuré sur cet ordinateur et affiché ici seulement. Ce sont les mêmes informations techniques que la supervision décrite dans « Mon accès » : rien de plus ne sort.</p>
+      <div class="resume" id="machine-resume" aria-label="État de votre ordinateur">
+        <div class="resume-bloc">
+          <span class="resume-libelle">Processeur</span>
+          <span class="resume-valeur" id="machine-cpu">–</span>
+          <span class="resume-note" id="machine-cpu-note"></span>
+        </div>
+        <div class="resume-bloc">
+          <span class="resume-libelle">Mémoire</span>
+          <span class="resume-valeur" id="machine-ram">–</span>
+          <progress id="machine-ram-barre" max="1" value="0" hidden></progress>
+        </div>
+        <div class="resume-bloc" id="machine-disque-bloc">
+          <span class="resume-libelle">Disque</span>
+          <span class="resume-valeur" id="machine-disque">–</span>
+          <progress id="machine-disque-barre" max="1" value="0" hidden></progress>
+          <span class="resume-note" id="machine-disque-note"></span>
+        </div>
+        <div class="resume-bloc">
+          <span class="resume-libelle">Système</span>
+          <span class="resume-valeur" id="machine-os">–</span>
+          <span class="resume-note" id="machine-uptime"></span>
+        </div>
+      </div>
+      <h3 class="sous-titre">Conseils pour votre machine</h3>
+      <ul class="conseils" id="machine-conseils"><li class="vide">Chargement…</li></ul>
+      <div class="actions">
+        <button type="button" class="bouton secondaire" id="machine-actualiser">Actualiser</button>
+        <span class="aide" id="machine-date" role="status" aria-live="polite"></span>
+        <span class="aide">Version du cockpit : <span id="machine-version">–</span></span>
+      </div>
     </section>
 
     <!-- ------------------------------------------------------------ Mon accès -->

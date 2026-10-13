@@ -7,7 +7,7 @@ import time
 
 
 NOM_COOKIE = "cockpit_session"
-VERSION_CLIENT = "1.1.0"
+VERSION_CLIENT = "1.3.0"
 
 
 class Banc:
@@ -108,10 +108,10 @@ class Banc:
         self.ok("GET / : marque et titre", "AlkymIA · Turbo OS — Votre cockpit" in b.decode("utf-8"))
         page = b.decode("utf-8")
         for texte in ("Collez votre clé d'accès", "Assistants", "Mes tâches", "Mon planning", "Mes notes",
-                      "Outils", "Mon accès", "Verrouiller"):
+                      "Outils", "Ma machine", "Mon accès", "Verrouiller"):
             self.ok("page : rubrique ou libellé « %s »" % texte, texte in page)
         externes = []
-        for chemin in ("/", "/app.js", "/app.css", "/espace.js", "/outils.js"):
+        for chemin in ("/", "/app.js", "/app.css", "/espace.js", "/outils.js", "/machine.js"):
             st2, _, corps, _ = self.req("GET", chemin)
             texte = corps.decode("utf-8")
             for motif in ('src="http', "src='http", 'href="http', "href='http", "url(http", "@import", "//cdn"):
@@ -486,13 +486,47 @@ class Banc:
         self.ok("rapide de 35 s -> 504 vers 30 s", st == 504 and err == "delai_depasse" and 28 <= d <= 34, resultats["r35"])
         self.controle("debit")
 
+    def machine(self):
+        """Rubrique « Ma machine » : mesures locales + conseils, jamais relayées à la passerelle."""
+        avant = self.nb_amont()
+        t = time.time()
+        st, _, b, j = self.lire("/api/machine", delai=30)
+        champs = ("os", "version_os", "cpu_modele", "coeurs", "cpu_pct", "ram_total_mo", "ram_utilisee_mo",
+                  "disque_total_go", "disque_libre_go", "uptime_s", "version_client", "conseils", "mesure_le")
+        self.ok("GET /api/machine -> 200 + tous les champs", st == 200 and all(c in (j or {}) for c in champs),
+                (st, sorted((j or {}).keys())))
+        self.ok("machine : version du cockpit = %s" % VERSION_CLIENT, (j or {}).get("version_client") == VERSION_CLIENT, j)
+        self.ok("machine : mémoire et cœurs mesurés", ((j or {}).get("ram_total_mo") or 0) > 0 and ((j or {}).get("coeurs") or 0) >= 1, j)
+        conseils = (j or {}).get("conseils")
+        self.ok("machine : conseils = liste de {sujet, niveau, texte}", isinstance(conseils, list) and all(
+            isinstance(c, dict) and c.get("texte") and c.get("niveau") in ("info", "attention") for c in conseils), conseils)
+        self.ok("machine : conseil IA locale présent (mémoire connue)",
+                any(c.get("sujet") == "ia-locale" for c in conseils or []), conseils)
+        self.ok("machine : chaque conseil propose une tâche valide (titre ≤ 200, priorité connue)", all(
+            isinstance(c.get("tache"), dict) and 0 < len(c["tache"].get("titre") or "") <= 200
+            and c["tache"].get("priorite") in ("basse", "normale", "haute") for c in conseils or []), conseils)
+        t2 = time.time()
+        st2, _, _, j2 = self.lire("/api/machine", delai=30)
+        self.ok("machine : 2e lecture servie par le cache (< 1 s, même mesure)",
+                st2 == 200 and time.time() - t2 < 1.0 and (j2 or {}).get("mesure_le") == (j or {}).get("mesure_le"),
+                (st2, round(time.time() - t2, 2), round(t2 - t, 2)))
+        self.ok("machine : aucune requête vers la passerelle", self.nb_amont() == avant, (avant, self.nb_amont()))
+        self.ok("machine : aucune clé dans la réponse", not any(c.encode() in b for c in self.cles.values()))
+        self.ok("machine : aucun nom de machine dans la réponse", "hostname" not in (j or {}) and "nom_machine" not in (j or {}))
+        garde = self.cookie   # la réponse 401 efface le cookie du banc : on garde la session ouverte pour la suite
+        st, _, _, j = self.lire("/api/machine", cookie=False)
+        self.cookie = garde
+        self.ok("machine : sans session -> 401 verrouille", st == 401 and (j or {}).get("erreur") == "verrouille", (st, j))
+        st, _, _, _ = self.lire("/api/moi")
+        self.ok("machine : la session du navigateur reste ouverte après la requête sans cookie", st == 200, st)
+
     def expiration(self):
         self.controle("expirer", qui="valide")
         st, _, _, j = self.lire("/api/moi")
         self.ok("accès expiré : /api/moi -> 401 acces_expire", st == 401 and j.get("erreur") == "acces_expire"
                 and j.get("message") == "Votre accès a expiré.", j)
         self.ok("accès expiré : la clé quitte la mémoire (cockpit reverrouillé)", self.cookie is None, self.cookie)
-        for chemin in ("/api/catalogue", "/api/demandes", "/api/taches", "/api/espace"):
+        for chemin in ("/api/catalogue", "/api/demandes", "/api/taches", "/api/espace", "/api/machine"):
             st, _, _, j = self.lire(chemin)
             self.ok("accès expiré : %s -> 401 verrouille" % chemin,
                     st == 401 and (j or {}).get("erreur") == "verrouille", (chemin, st))
